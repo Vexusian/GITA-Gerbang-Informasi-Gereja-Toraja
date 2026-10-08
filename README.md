@@ -1,1 +1,0 @@
-GITA (Gerbang Informasi Gereja Toraja) is an AI-assisted system designed to support information access, organizational governance, and document preparation within Gereja Toraja. It aims to help users understand organizational information and procedures while assisting in the preparation of structured documents.
