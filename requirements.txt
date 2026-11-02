@@ -1,0 +1,7 @@
+pymupdf
+python-dotenv
+requests
+numpy
+faiss-cpu
+fastapi
+uvicorn
