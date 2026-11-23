@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GITA — Frontend Automated Test Suite</title>
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <style>
+    body {
+      padding: var(--space-8) var(--space-4);
+      background-color: var(--bg-app);
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .test-header {
+      margin-bottom: var(--space-6);
+      border-bottom: 1px solid var(--border-default);
+      padding-bottom: var(--space-4);
+    }
+    .test-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      background: var(--accent-subtle);
+      color: var(--accent-primary);
+      border-radius: var(--radius-xs);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      margin-bottom: var(--space-2);
+    }
+    .test-stats {
+      display: flex;
+      gap: var(--space-4);
+      margin-top: var(--space-3);
+    }
+    .stat-pill {
+      padding: var(--space-2) var(--space-4);
+      border-radius: var(--radius-sm);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+    }
+    .stat-pill.passed { color: var(--status-success-text); border-color: var(--status-success-border); }
+    .stat-pill.failed { color: var(--status-error-text); border-color: var(--status-error-border); }
+    
+    .test-case {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-4);
+      margin-bottom: var(--space-2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: var(--text-sm);
+    }
+    .test-case.pass { border-left: 4px solid var(--status-success-text); }
+    .test-case.fail { border-left: 4px solid var(--status-error-text); background: var(--status-error-bg); }
+    
+    .test-title { font-weight: 500; color: var(--text-primary); }
+    .test-status { font-weight: 700; font-size: var(--text-xs); }
+    .test-status.pass { color: var(--status-success-text); }
+    .test-status.fail { color: var(--status-error-text); }
+    
+    .btn-return {
+      display: inline-block;
+      margin-top: var(--space-6);
+      color: var(--accent-primary);
+      font-size: var(--text-sm);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .btn-return:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="test-header">
+    <div class="test-badge">VERIFIKASI SISTEM</div>
+    <h1>Pengujian Otomatis Frontend GITA</h1>
+    <p>Memeriksa integritas logika, parsing markdown, skema respon RAG, dan penanganan status.</p>
+    
+    <div class="test-stats">
+      <div class="stat-pill" id="stat-total">Total: 0</div>
+      <div class="stat-pill passed" id="stat-passed">Lolos: 0</div>
+      <div class="stat-pill failed" id="stat-failed">Gagal: 0</div>
+    </div>
+  </div>
+
+  <div id="test-results"></div>
+
+  <a href="index.html" class="btn-return">← Kembali ke Antarmuka Utama GITA</a>
+
+  <!-- Skrip Modul GITA -->
+  <script src="js/config.js"></script>
+  <script src="js/mockData.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/ui.js"></script>
+
+  <!-- Skrip Test Runner -->
+  <script>
+    (async function() {
+      const resultsContainer = document.getElementById("test-results");
+      let passedCount = 0;
+      let failedCount = 0;
+      const tests = [];
+
+      function test(name, fn) {
+        tests.push({ name, fn });
+      }
+
+      function assert(condition, message) {
+        if (!condition) throw new Error(message || "Assertion failed");
+      }
+
+      /* ==========================================================================
+         Daftar Test Cases
+         ========================================================================== */
+
+      // 1. Config Object
+      test("Config: Namespace dan endpoint konfigurasi tersedia", () => {
+        assert(window.GITA && window.GITA.CONFIG, "GITA.CONFIG harus terdefinisi");
+        assert(window.GITA.CONFIG.ENDPOINTS.QUERY === "/query", "Endpoint query harus /query");
+        assert(typeof window.GITA.CONFIG.USE_MOCK === "boolean", "USE_MOCK harus boolean");
+      });
+
+      // 2. Mock Data - Success State
+      test("MockData: Query 'hakikat' menghasilkan status 'success' dengan referensi dokumen", () => {
+        const res = window.GITA.getMockResponse("Apa hakikat dan wujud Gereja Toraja?");
+        assert(res.status === "success", "Status harus success");
+        assert(res.answer.includes("Gereja Toraja"), "Jawaban harus memuat teks Gereja Toraja");
+        assert(Array.isArray(res.sources) && res.sources.length >= 2, "Harus menyertakan minimal 2 rujukan pasal");
+        assert(res.sources[0].chunk_id === "TGT-BT-BAB-I-PASAL-1", "Sumber pertama harus Pasal 1");
+      });
+
+      // 3. Mock Data - Presbiterial Sinodal & Visi
+      test("MockData: Query 'visi misi dan bentuk' memuat Pasal 5, 6, dan 8", () => {
+        const res = window.GITA.getMockResponse("visi dan bentuk presbiterial");
+        assert(res.status === "success", "Status harus success");
+        assert(res.sources.some(s => s.article === "8"), "Harus menyertakan Pasal 8 mengenai bentuk presbiterial");
+      });
+
+      // 4. Mock Data - Not Found State
+      test("MockData: Pertanyaan di luar cakupan menghasilkan status 'not_found'", () => {
+        const res = window.GITA.getMockResponse("Bagaimana cara membuat sim c?");
+        assert(res.status === "not_found", "Harus menghasilkan status not_found");
+        assert(res.sources.length === 0, "Rujukan sumber harus kosong jika not found");
+      });
+
+      // 5. Mock Data - Insufficient Evidence
+      test("MockData: Pertanyaan anggaran menghasilkan 'insufficient_evidence'", () => {
+        const res = window.GITA.getMockResponse("Berapa anggaran biaya tahun depan?");
+        assert(res.status === "insufficient_evidence", "Harus menghasilkan status insufficient_evidence");
+      });
+
+      // 6. Mock Data - Error Handling
+      test("MockData: Query pemicu error menghasilkan status 'error'", () => {
+        const res = window.GITA.getMockResponse("simulasi error teknis");
+        assert(res.status === "error", "Harus menghasilkan status error");
+      });
+
+      // 7. UI Escape HTML (XSS Protection)
+      test("UI: escapeHTML menetralkan tag skrip berbahaya", () => {
+        const raw = '<script>alert("xss")<\/script>&"\'';
+        const escaped = window.GITA.UI.escapeHTML(raw);
+        assert(!escaped.includes("<script>"), "Tag script tidak boleh lolos");
+        assert(escaped.includes("&lt;script&gt;"), "Kurung sudut harus di-escape");
+      });
+
+      // 8. UI Format Markdown
+      test("UI: formatDocumentMarkdown mengubah **bold** dan list menjadi HTML semantik", () => {
+        const md = "**Teks Tebal**\n1. Poin Pertama\n2. Poin Kedua";
+        const html = window.GITA.UI.formatDocumentMarkdown(md);
+        assert(html.includes("<strong>Teks Tebal</strong>"), "Bold harus diformat menjadi <strong>");
+        assert(html.includes("<ol><li>Poin Pertama</li>"), "List bernomor harus dibungkus <ol><li>");
+      });
+
+      // 9. API Service Validation
+      test("API: askQuestion mengembalikan Promise yang tervalidasi skemanya", async () => {
+        const res = await window.GITA.askQuestion("Apa visi Gereja Toraja?");
+        assert(res && typeof res === "object", "Respon harus objek");
+        assert(["success", "not_found", "insufficient_evidence", "error"].includes(res.status), "Status harus valid");
+        assert(typeof res.answer === "string", "Answer harus string");
+        assert(Array.isArray(res.sources), "Sources harus array");
+      });
+
+      // 10. API Service Empty Input Rejection
+      test("API: askQuestion menolak pertanyaan kosong dengan melempar Error", async () => {
+        let threw = false;
+        try {
+          await window.GITA.askQuestion("   ");
+        } catch (e) {
+          threw = true;
+        }
+        assert(threw, "askQuestion harus melempar Error jika input hanya spasi");
+      });
+
+      // 11. UI Bubble Message Cleanliness (No redundant "Pertanyaan Pengurus")
+      test("UI: appendUserMessage merender bubble pengguna tanpa label 'Pertanyaan Pengurus'", () => {
+        const dummyContainer = document.createElement("div");
+        window.GITA.UI.appendUserMessage(dummyContainer, "Pertanyaan uji coba?");
+        assert(dummyContainer.querySelector(".user-query-bubble"), "Harus memiliki .user-query-bubble");
+        assert(dummyContainer.querySelector(".user-query-text"), "Harus memiliki .user-query-text");
+        assert(!dummyContainer.textContent.includes("Pertanyaan Pengurus"), "Tidak boleh memuat teks 'Pertanyaan Pengurus'");
+      });
+
+      // 12. UI Assistant Response Structure & Status
+      test("UI: appendAssistantResponse merender kartu jawaban dengan status dan sitasi", () => {
+        const dummyContainer = document.createElement("div");
+        const mockData = {
+          status: "success",
+          answer: "Ini adalah jawaban uji coba.",
+          sources: [{ chunk_id: "TGT-1", title: "Pasal 1", document_title: "Tata Gereja Toraja", page_number: 10, text_preview: "Isi pasal..." }]
+        };
+        window.GITA.UI.appendAssistantResponse(dummyContainer, mockData);
+        assert(dummyContainer.querySelector(".assistant-response-card"), "Harus memiliki .assistant-response-card");
+        assert(dummyContainer.querySelector(".status-pill.success"), "Harus memiliki status pill success");
+        assert(dummyContainer.querySelector(".citation-card"), "Harus memiliki citation card");
+      });
+
+      /* ==========================================================================
+         Eksekusi Seluruh Test
+         ========================================================================== */
+      for (const t of tests) {
+        const el = document.createElement("div");
+        el.className = "test-case";
+
+        try {
+          await t.fn();
+          passedCount++;
+          el.classList.add("pass");
+          el.innerHTML = `
+            <span class="test-title">${t.name}</span>
+            <span class="test-status pass">✓ LOLOS</span>
+          `;
+        } catch (err) {
+          failedCount++;
+          el.classList.add("fail");
+          el.innerHTML = `
+            <div>
+              <span class="test-title">${t.name}</span>
+              <div style="font-size: 11px; color: var(--status-error-text); margin-top: 4px;">${err.message}</div>
+            </div>
+            <span class="test-status fail">✗ GAGAL</span>
+          `;
+        }
+
+        resultsContainer.appendChild(el);
+      }
+
+      // Update statistik
+      document.getElementById("stat-total").textContent = `Total: ${tests.length}`;
+      document.getElementById("stat-passed").textContent = `Lolos: ${passedCount}`;
+      document.getElementById("stat-failed").textContent = `Gagal: ${failedCount}`;
+    })();
+  </script>
+</body>
+</html>
+

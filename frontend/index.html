@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="GITA - Gerbang Informasi Tata Gereja Toraja berbasis Retrieval-Augmented Generation (RAG)">
+  <title>GITA — Gerbang Informasi Tata Gereja Toraja</title>
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+  <div class="app-wrapper">
+    <!-- Header Aplikasi -->
+    <header class="app-header">
+      <div class="brand-section">
+        <div class="brand-badge" title="Gereja Toraja">GT</div>
+        <div class="brand-info">
+          <span class="brand-title">GITA</span>
+          <span class="brand-subtitle">Gerbang Informasi Tata Gereja</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="doc-scope-badge" title="Dokumen rujukan yang diindeks sistem">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          </svg>
+          <span class="scope-text">Rujukan: <strong>Tata Gereja Toraja</strong></span>
+        </div>
+
+        <button type="button" class="btn-secondary-action mode-toggle" id="mode-toggle" title="Klik untuk beralih mode simulasi / live API">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+          <span id="mode-label">Mode: Simulasi TGT</span>
+        </button>
+
+        <button type="button" class="btn-secondary-action" id="btn-new-chat" title="Bersihkan riwayat percakapan">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14"></path>
+          </svg>
+          <span>Baru</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Area Konten Utama -->
+    <main class="app-main" id="main-content">
+      <!-- Empty State Awal -->
+      <section class="empty-state" id="empty-state">
+        <div class="empty-state-badge">Sistem RAG Tata Gereja Toraja</div>
+        <h1 class="empty-state-title">Temukan Ketentuan &amp; Regulasi Gereja</h1>
+        <p class="empty-state-desc">
+          GITA membantu pengurus, pendeta, dan majelis mencari penjelasan resmi berdasarkan naskah Tata Gereja Toraja (Pembukaan, Batang Tubuh, dan Memori Penjelasan) secara tepat dengan rujukan pasal langsung.
+        </p>
+
+        <div class="empty-state-prompt-title">Contoh Pertanyaan yang Dapat Diajukan:</div>
+        
+        <div class="sample-prompts-grid">
+          <div class="sample-prompt-card" data-prompt="Apa hakikat dan wujud Gereja Toraja menurut Pasal 2?">
+            <span class="sample-prompt-tag">Batang Tubuh • Bab I</span>
+            <span class="sample-prompt-text">Apa hakikat dan wujud Gereja Toraja menurut Pasal 2?</span>
+          </div>
+
+          <div class="sample-prompt-card" data-prompt="Apa visi, misi, dan bentuk organisasi Gereja Toraja?">
+            <span class="sample-prompt-tag">Batang Tubuh • Pasal 5–8</span>
+            <span class="sample-prompt-text">Apa visi, misi, dan bentuk organisasi Gereja Toraja?</span>
+          </div>
+
+          <div class="sample-prompt-card" data-prompt="Kapan Gereja Toraja dibentuk dan apa status badan hukumnya?">
+            <span class="sample-prompt-tag">Sejarah &amp; Hukum • Pasal 3</span>
+            <span class="sample-prompt-text">Kapan Gereja Toraja dibentuk dan apa status badan hukumnya?</span>
+          </div>
+
+          <div class="sample-prompt-card" data-prompt="Apa rumusan dan dokumen Pengakuan Iman Gereja Toraja?">
+            <span class="sample-prompt-tag">Pengakuan Iman • Pasal 4</span>
+            <span class="sample-prompt-text">Apa rumusan dan dokumen Pengakuan Iman Gereja Toraja?</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Wadah Aliran Percakapan -->
+      <section class="conversation-container" id="conversation-container" aria-live="polite" aria-label="Riwayat Tanya Jawab">
+        <!-- Pesan dan referensi ditambahkan secara dinamis oleh ui.js -->
+      </section>
+    </main>
+
+    <!-- Dock Input Bawah -->
+    <footer class="input-dock">
+      <div class="input-shell">
+        <div class="input-card">
+          <form id="query-form">
+            <textarea 
+              id="query-input" 
+              class="input-textarea" 
+              placeholder="Tuliskan pertanyaan seputar ketentuan Tata Gereja Toraja..." 
+              rows="1" 
+              aria-label="Kolom pertanyaan"
+              required></textarea>
+            
+            <div class="input-controls">
+              <div class="input-shortcuts-hint">
+                <span>Tekan</span>
+                <span class="kbd-badge">Enter ↵</span>
+                <span>untuk mengirim,</span>
+                <span class="kbd-badge">Shift + Enter</span>
+                <span>untuk baris baru</span>
+              </div>
+
+              <button type="submit" id="btn-send" class="btn-send" disabled aria-label="Kirim Pertanyaan">
+                <span>Kirim</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+            </div>
+          </form>
+        </div>
+        <div class="input-meta-note">
+          GITA menyajikan jawaban berdasarkan dokumen resmi Tata Gereja Toraja. Selalu periksa kembali pasal acuan untuk kepastian hukum.
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- JavaScript Application Layer (Universal Vanilla JS) -->
+  <script src="js/config.js"></script>
+  <script src="js/mockData.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
