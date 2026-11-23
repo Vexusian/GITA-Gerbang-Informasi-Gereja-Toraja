@@ -3,7 +3,7 @@
  * Universal Vanilla JS Module
  */
 
-(function(window) {
+(function (window) {
   'use strict';
 
   window.GITA = window.GITA || {};
@@ -73,6 +73,97 @@
     if (inOl) output.push("</ol>");
 
     return output.join("");
+  }
+
+  function formatLegalExcerpt(rawContent) {
+    if (!rawContent || typeof rawContent !== "string") {
+      return "<p class='citation-excerpt-p'>Teks rujukan tercatat dalam dokumen.</p>";
+    }
+
+    // 1. Normalisasi newline dan bersihkan whitespace
+    const rawLines = rawContent.replace(/\r\n/g, "\n").split("\n");
+    const lines = rawLines.map((l) => l.trim()).filter(Boolean);
+
+    // 2. Gabungkan nomor ayat/item yang terputus di baris sendiri dengan baris teks berikutnya
+    // Contoh: '1.' di baris 1 dan 'Gereja Toraja...' di baris 2 -> '1. Gereja Toraja...'
+    const merged = [];
+    for (let i = 0; i < lines.length; i++) {
+      const current = lines[i];
+      const isIsolatedNumber = /^(\d+\.|\(\d+\)|[a-zA-Z]\.|\([a-zA-Z]\)|Ayat\s+\d+\.?)$/i.test(current);
+      if (isIsolatedNumber && i + 1 < lines.length) {
+        merged.push(current + " " + lines[i + 1]);
+        i++; // lewati baris berikutnya karena sudah digabung
+      } else {
+        merged.push(current);
+      }
+    }
+
+    // 3. Kelompokkan menjadi blok terstruktur (Judul Pasal, Ayat per nomor, atau Paragraf)
+    const blocks = [];
+    let currentBlock = "";
+
+    for (let i = 0; i < merged.length; i++) {
+      const line = merged[i];
+
+      const isArticleHeader = /^(Pasal\s+\d+|BAB\s+[IVXLCDM]+|PEMBUKAAN|MEMORI\s+PENJELASAN|LAMPIRAN)/i.test(line);
+      const isAyatOrItem = /^(\d+\.|\(\d+\)|[a-zA-Z]\.|\([a-zA-Z]\)|Ayat\s+\d+)/i.test(line);
+
+      if (isArticleHeader) {
+        if (currentBlock) {
+          blocks.push(currentBlock);
+          currentBlock = "";
+        }
+        // Jika baris berikutnya adalah judul pasal pendek (misal: 'Hakikat dan Wujud' atau 'Nama')
+        if (
+          i + 1 < merged.length &&
+          !/^(\d+\.|\(\d+\)|Pasal|BAB|Ayat)/i.test(merged[i + 1]) &&
+          merged[i + 1].length < 60 &&
+          !/[.:;]$/.test(merged[i + 1])
+        ) {
+          blocks.push(`<strong>${escapeHTML(line)} — ${escapeHTML(merged[i + 1])}</strong>`);
+          i++;
+        } else {
+          blocks.push(`<strong>${escapeHTML(line)}</strong>`);
+        }
+        continue;
+      }
+
+      if (isAyatOrItem) {
+        if (currentBlock) {
+          blocks.push(currentBlock);
+        }
+        currentBlock = line;
+        continue;
+      }
+
+      // Kalimat lanjutan dari paragraf/ayat yang sama (un-break baris PDF)
+      if (currentBlock) {
+        currentBlock += " " + line;
+      } else {
+        currentBlock = line;
+      }
+    }
+
+    if (currentBlock) {
+      blocks.push(currentBlock);
+    }
+
+    // 4. Render ke HTML yang rapi dan terstruktur
+    return blocks
+      .map((block) => {
+        if (block.startsWith("<strong>")) {
+          return `<div class="citation-excerpt-header">${block}</div>`;
+        }
+
+        const escaped = escapeHTML(block);
+        const itemMatch = escaped.match(/^(\d+\.|\(\d+\)|[a-zA-Z]\.|\([a-zA-Z]\)|Ayat\s+\d+\.?)\s+(.*)/s);
+        if (itemMatch) {
+          return `<div class="citation-excerpt-item"><span class="citation-item-num">${itemMatch[1]}</span><span class="citation-item-text">${itemMatch[2]}</span></div>`;
+        }
+
+        return `<p class="citation-excerpt-p">${escaped}</p>`;
+      })
+      .join("");
   }
 
   const STATUS_CONFIG = {
@@ -203,7 +294,7 @@
         const chapterName = source.chapter ? `BAB ${escapeHTML(source.chapter)}` : "";
         const articleName = source.article ? `Pasal ${escapeHTML(source.article)}` : "";
         const pageInfo = source.page_start ? `Halaman ${source.page_start}${source.page_end && source.page_end !== source.page_start ? '–' + source.page_end : ''}` : "";
-        const excerpt = escapeHTML(source.content || "Teks pasal rujukan tercatat dalam dokumen.");
+        const excerpt = formatLegalExcerpt(source.content || "Teks pasal rujukan tercatat dalam dokumen.");
         const excerptId = `citation-excerpt-${Date.now()}-${index}`;
 
         html += `
@@ -311,6 +402,7 @@
   window.GITA.UI = {
     escapeHTML,
     formatDocumentMarkdown,
+    formatLegalExcerpt,
     appendUserMessage,
     showLoadingIndicator,
     removeLoadingIndicator,

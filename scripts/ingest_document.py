@@ -90,7 +90,38 @@ def parse_structural_document(pages, doc_title: str, source_filename: str):
     def finish_unit():
         nonlocal current_unit
         if current_unit:
-            current_unit["content"] = "\n".join(current_unit["content_lines"]).strip()
+            raw_text = "\n".join(current_unit["content_lines"]).strip()
+            # Bersihkan dan satukan nomor ayat dengan baris teks ayat
+            cleaned_lines = []
+            raw_split = [l.strip() for l in raw_text.splitlines() if l.strip()]
+            i = 0
+            while i < len(raw_split):
+                l = raw_split[i]
+                if re.match(r"^(\d+\.|\(\d+\)|[a-zA-Z]\.|\([a-zA-Z]\)|Ayat\s+\d+\.?)$", l, re.IGNORECASE) and i + 1 < len(raw_split):
+                    cleaned_lines.append(f"{l} {raw_split[i+1]}")
+                    i += 2
+                else:
+                    cleaned_lines.append(l)
+                    i += 1
+            
+            blocks = []
+            curr_block = ""
+            for l in cleaned_lines:
+                is_hdr = bool(re.match(r"^(Pasal\s+\d+|BAB\s+[IVXLCDM]+|PEMBUKAAN|MEMORI\s+PENJELASAN|LAMPIRAN)", l, re.IGNORECASE))
+                is_ayat = bool(re.match(r"^(\d+\.|\(\d+\)|[a-zA-Z]\.|\([a-zA-Z]\)|Ayat\s+\d+)", l, re.IGNORECASE))
+                if is_hdr or is_ayat:
+                    if curr_block:
+                        blocks.append(curr_block)
+                    curr_block = l
+                else:
+                    if curr_block:
+                        curr_block += " " + l
+                    else:
+                        curr_block = l
+            if curr_block:
+                blocks.append(curr_block)
+
+            current_unit["content"] = "\n".join(blocks).strip()
             del current_unit["content_lines"]
             if current_unit["content"]:
                 units.append(current_unit)

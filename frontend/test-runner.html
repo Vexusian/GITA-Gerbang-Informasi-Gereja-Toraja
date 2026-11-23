@@ -218,6 +218,16 @@
         assert(dummyContainer.querySelector(".citation-card"), "Harus memiliki citation card");
       });
 
+      // 13. UI Legal Excerpt Formatting (Pasal & Ayat Alignment)
+      test("UI: formatLegalExcerpt merender nomor ayat sejajar pada baris yang sama", () => {
+        const raw = "Pasal 2\nHakikat dan Wujud\n1.\nGereja Toraja adalah persekutuan.\n2.\nGereja Toraja adalah gereja.";
+        const rendered = window.GITA.UI.formatLegalExcerpt(raw);
+        assert(rendered.includes("Pasal 2 — Hakikat dan Wujud"), "Header harus memuat pasal dan nama judul");
+        assert(rendered.includes("citation-excerpt-item"), "Harus merender item ayat");
+        assert(rendered.includes('<span class="citation-item-num">1.</span>'), "Harus memiliki span nomor ayat 1.");
+        assert(rendered.includes('<span class="citation-item-text">Gereja Toraja adalah persekutuan.</span>'), "Teks ayat harus berdampingan");
+      });
+
       /* ==========================================================================
          Eksekusi Seluruh Test
          ========================================================================== */
