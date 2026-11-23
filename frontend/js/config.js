@@ -9,8 +9,8 @@
   window.GITA = window.GITA || {};
 
   window.GITA.CONFIG = {
-    // Mode simulasi untuk pengembangan frontend sebelum backend FastAPI aktif
-    USE_MOCK: true,
+    // Otomatis aktifkan Live Backend jika dibuka via http/localhost, atau Simulasi jika dibuka offline (file://)
+    USE_MOCK: !(typeof window !== 'undefined' && window.location.protocol.startsWith('http')),
 
     // Endpoint FastAPI Backend
     API_BASE_URL: "http://127.0.0.1:8000/api",
